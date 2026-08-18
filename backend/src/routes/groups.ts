@@ -47,6 +47,69 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
 });
 
 /**
+ * GET /api/groups/stats
+ * Return dashboard summary stats for the authenticated user's groups.
+ * Must be registered BEFORE /:id to prevent "stats" being treated as an id.
+ */
+router.get('/stats', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const creator = req.user!.publicKey;
+
+  try {
+    const { groups } = await groupsService.list({ limit: 1000, offset: 0, creator });
+
+    const groupCount = groups.length;
+    const memberCount = groups.reduce((sum, g) => sum + g.membersCount, 0);
+
+    // Aggregate total distributed per token from transaction data source
+    const { transactionDataSource } = await import('../services/transactions.js');
+    const tokenTotals: Map<string, bigint> = new Map();
+    let lastDistribution: Date | null = null;
+
+    for (const g of groups) {
+      const result = await transactionDataSource.getTransactions({
+        groupId: g.groupId,
+        limit: 1000,
+        order: 'desc',
+      });
+
+      for (const tx of result.data) {
+        const existing = tokenTotals.get(tx.asset) ?? 0n;
+        try {
+          tokenTotals.set(tx.asset, existing + BigInt(tx.amount));
+        } catch {
+          // Malformed amount – skip
+        }
+
+        const ts = new Date(tx.timestamp);
+        if (!lastDistribution || ts > lastDistribution) {
+          lastDistribution = ts;
+        }
+      }
+    }
+
+    const totalDistributed = Array.from(tokenTotals.entries()).map(([asset, total]) => ({
+      asset,
+      totalAmount: total.toString(),
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        groupCount,
+        memberCount,
+        totalDistributed,
+        lastDistribution: lastDistribution?.toISOString() ?? null,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to retrieve stats.';
+    return res
+      .status(500)
+      .json({ success: false, error: { code: 'INTERNAL_SERVER_ERROR', message } });
+  }
+});
+
+/**
  * GET /api/groups
  * List payroll groups with pagination. Requires authentication.
  */

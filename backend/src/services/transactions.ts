@@ -14,6 +14,10 @@ export interface TransactionFilter {
   order?: 'asc' | 'desc';
   limit?: number;
   cursor?: string;
+  /** ISO 8601 string – include transactions on or after this date */
+  dateFrom?: string;
+  /** ISO 8601 string – include transactions on or before this date */
+  dateTo?: string;
 }
 
 export interface TransactionResult {
@@ -49,6 +53,16 @@ export class InMemoryTransactionDataSource implements TransactionDataSource {
 
     if (filter.memberAddress) {
       filtered = filtered.filter((t) => t.membersInvolved.includes(filter.memberAddress!));
+    }
+
+    if (filter.dateFrom) {
+      const from = new Date(filter.dateFrom).getTime();
+      filtered = filtered.filter((t) => new Date(t.timestamp).getTime() >= from);
+    }
+
+    if (filter.dateTo) {
+      const to = new Date(filter.dateTo).getTime();
+      filtered = filtered.filter((t) => new Date(t.timestamp).getTime() <= to);
     }
 
     // Sort by timestamp

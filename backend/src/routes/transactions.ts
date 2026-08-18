@@ -37,7 +37,7 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
   }
 
   // Validate query parameters
-  const { group_id, member, order, limit: limitStr, cursor } = req.query;
+  const { group_id, member, order, limit: limitStr, cursor, date_from, date_to } = req.query;
 
   // group_id is required
   if (!group_id || typeof group_id !== 'string' || group_id.trim() === '') {
@@ -101,6 +101,32 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
     }
   }
 
+  // Validate date_from if provided
+  if (date_from !== undefined) {
+    if (typeof date_from !== 'string' || isNaN(Date.parse(date_from))) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'BAD_REQUEST',
+          message: 'Query parameter "date_from" must be a valid ISO 8601 date string.',
+        },
+      });
+    }
+  }
+
+  // Validate date_to if provided
+  if (date_to !== undefined) {
+    if (typeof date_to !== 'string' || isNaN(Date.parse(date_to))) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'BAD_REQUEST',
+          message: 'Query parameter "date_to" must be a valid ISO 8601 date string.',
+        },
+      });
+    }
+  }
+
   // Check if user has access to this group
   // User can access if they are the creator or a member
   const group = await groupsService.getByGroupId(group_id);
@@ -134,6 +160,8 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
     order: (order as 'asc' | 'desc') || 'desc',
     limit,
     cursor: cursor as string | undefined,
+    dateFrom: date_from as string | undefined,
+    dateTo: date_to as string | undefined,
   };
 
   try {
