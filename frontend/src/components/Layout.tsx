@@ -20,11 +20,14 @@ export default function Layout({ children, sidebar, className = '' }: LayoutProp
             Paymesh
           </Link>
           <nav className="flex items-center gap-4 text-sm font-medium text-gray-600 dark:text-gray-300">
+            <Link href="/dashboard" className="transition hover:text-gray-900 dark:hover:text-gray-50">
+              Dashboard
+            </Link>
             <Link href="/groups" className="transition hover:text-gray-900 dark:hover:text-gray-50">
               Groups
             </Link>
-            <Link href="/" className="transition hover:text-gray-900 dark:hover:text-gray-50">
-              Home
+            <Link href="/transactions" className="transition hover:text-gray-900 dark:hover:text-gray-50">
+              Transactions
             </Link>
           </nav>
         </div>
